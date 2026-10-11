@@ -143,6 +143,15 @@ def native_check(cli: Path, cases: list[dict]) -> None:
     environment = {key: value for key, value in os.environ.items() if not key.startswith("RUNREVEAL_")}
     with tempfile.TemporaryDirectory(prefix="runreveal-offline-") as config_dir:
         environment["XDG_CONFIG_HOME"] = config_dir
+        # Avoid selecting a desktop user's previously authenticated keychain profile.
+        environment["RUNREVEAL_PROFILE"] = Path(config_dir).name
+        # v2026.9.1 checks that token/workspace settings exist even for local commands.
+        # This sentinel is deliberately NOT a credential. It never goes to RunReveal:
+        # bind the CLI API URL to an unusable loopback endpoint, so accidental API
+        # dependencies fail closed instead of consulting a real profile or workspace.
+        environment["RUNREVEAL_TOKEN"] = "offline-fixture-not-a-credential"
+        environment["RUNREVEAL_WORKSPACE"] = "offline-validation"
+        environment["RUNREVEAL_BASEURL"] = "http://127.0.0.1:1"
         for kind in ("sigma", "sql"):
             result = subprocess.run([str(cli), "lint", kind, f"detections/{kind}"], cwd=ROOT, env=environment,
                                     capture_output=True, text=True, timeout=60, check=False)

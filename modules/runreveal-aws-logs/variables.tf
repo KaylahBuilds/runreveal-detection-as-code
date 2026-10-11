@@ -61,7 +61,7 @@ variable "external_ids" {
   })
   sensitive = true
   validation {
-    condition     = alltrue([for id in values(var.external_ids) : can(regex("^[A-Za-z0-9+=,.@:/_-]{16,1224}$", id))]) && var.external_ids.waf != var.external_ids.alb
+    condition     = alltrue([for id in values(var.external_ids) : length(id) >= 16 && length(id) <= 1224 && can(regex("^[A-Za-z0-9+=,.@:/_-]+$", id))]) && var.external_ids.waf != var.external_ids.alb
     error_message = "Provide distinct 16-1224 character external IDs for WAF and ALB, using STS ExternalId-compatible characters."
   }
 }
