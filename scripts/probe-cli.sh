@@ -32,3 +32,4 @@ probe "$cli" lint sigma detections/sigma
 probe "$cli" lint sql detections/sql
 probe "$cli" detections run -f detections/sigma/aws-waf-blocked-admin-request.yaml -i fixtures/waf-positive.ndjson
 probe "$cli" detections run -f detections/sigma/aws-waf-blocked-admin-request.yaml -i fixtures/waf-negative.ndjson
+probe "$cli" detections run --fail-no-match=false -f detections/sigma/aws-waf-blocked-admin-request.yaml -i fixtures/waf-mixed.ndjson

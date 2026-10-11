@@ -7,8 +7,8 @@ This example implements the lifecycle from [RunReveal's CI/CD guide](https://blo
 | Detection | Question | Validation here |
 | --- | --- | --- |
 | `sigma/aws-waf-blocked-admin-request.yaml` | Did WAF block a request to one of two illustrative administrative paths? | Synthetic positive, negative, missing/null and mixed-event fixtures |
-| `sql/aws-waf-block-burst.yaml` | Did one IP and ACL accumulate at least 20 blocked requests in a received window? | Configuration contract and native SQL lint; workspace execution is separate |
-| `sql/alb-server-error-burst.yaml` | Did one ALB log source and host accumulate at least 10 HTTP 5xx responses? | Configuration contract and native SQL lint; workspace execution is separate |
+| `sql/aws-waf-block-burst.yaml` | Did one IP and ACL accumulate at least 20 blocked requests in a received window? | Offline configuration contract; API-backed lint and workspace execution are opt-in staging checks |
+| `sql/alb-server-error-burst.yaml` | Did one ALB log source and host accumulate at least 10 HTTP 5xx responses? | Offline configuration contract; API-backed lint and workspace execution are opt-in staging checks |
 
 Paths are relative to `detections/`. Every detection ships **disabled**, without notification destinations or automated triage. Counts are demonstration thresholds, not universal baselines. A blocked request is not proof of a successful attack; a 5xx burst can be an application outage. There is no automated IP blocking or remediation.
 
@@ -29,9 +29,13 @@ The installer downloads RunReveal **v2026.9.1**, verifies the Linux amd64 archiv
 `tests/detection-tests.json` is the explicit contract: four cases, twelve events, a boolean outcome per line. `scripts/test_detections.py` has two layers:
 
 1. Offline checks validate repository paths, fixture shape and this demonstration's narrowly supported exact-equality selection. This little evaluator is **not a Sigma engine**. It also checks disabled defaults and scheduled SQL windowing, without claiming SQL execution.
-2. `--native` runs the actual CLI's Sigma and SQL linters, then feeds each fixture into `detections run`. It requires the documented result for **every line** and the expected exit code. A positive result uses exit 1; ordinary command failure can also use exit 1. Therefore exit 1 alone never counts as success. Missing, duplicate, unknown or error output fails closed. A changed output format requires reviewing and updating the harness, not suppressing errors.
+2. `--native` feeds each fixture into the actual CLI's local Sigma `detections run` command with `--fail-no-match=false`. It requires exit 0 **and** the correct result for every input line. For the pinned v2026.9.1, matching lines are printed as `line N matches detection [Title]`; nonmatching lines use `entry N does not match detection [Title]`. Missing, duplicate, unknown or error output fails closed. A changed output format requires reviewing and updating the harness, not suppressing errors.
 
-The native commands here do not call sync or historical queries. Remove any real `RUNREVEAL_TOKEN` before using the native runner; it refuses that input. The pinned CLI checks for token/workspace settings even for local commands. The child process therefore gets the literal nonsecret sentinel `offline-fixture-not-a-credential`, workspace name `offline-validation`, and API URL `http://127.0.0.1:1`. Those values cannot authenticate to RunReveal, and an accidental API dependency fails on the loopback endpoint rather than contacting the service. A temporary config directory and random profile also keep it away from your normal keychain profile. This is not a general network sandbox or an authenticated workspace test. Read [VALIDATION.md](../VALIDATION.md) for checks actually completed in this repository, not assumed capabilities.
+The 2025 blog describes match exit 1 and no-match exit 0. Our probe of v2026.9.1 observed the opposite default: a positive file exited 0 and a negative file exited 1. Its `--fail-no-match` flag defaults to true. The harness explicitly disables that behavior and checks individual outcomes, so negative fixtures are meaningful tests without disguising engine errors as successful detections.
+
+Both `lint sigma` and `lint sql` in this pinned release call the RunReveal API. They are **not offline checks** and are not reported as passed by public CI. The inactive, credentialed preview template runs both before sync dry-run; no such API validation is performed without opt-in staging credentials.
+
+The native runner does not call lint, sync or historical queries. Remove any real `RUNREVEAL_TOKEN` before using it; it refuses that input. The pinned CLI checks for token/workspace settings even for local replay. The child process therefore gets the literal nonsecret sentinel `offline-fixture-not-a-credential`, workspace name `offline-validation`, and API URL `http://127.0.0.1:1`. Those values cannot authenticate to RunReveal, and an accidental API dependency fails on the loopback endpoint rather than contacting the service. A temporary config directory and random profile also keep it away from your normal keychain profile. This is not a general network sandbox or an authenticated workspace test. Read [VALIDATION.md](../VALIDATION.md) for checks actually completed in this repository, not assumed capabilities.
 
 ## Know which event shape you are testing
 
@@ -49,6 +53,8 @@ Scheduled SQL uses different, normalized tables: `aws_waf_logs` for WAF and `htt
 
 ```sh
 # Credentialed operations: opt-in staging only, not executed by ordinary CI.
+runreveal lint sigma detections/sigma
+runreveal lint sql detections/sql
 runreveal detections test -f detections/sql/aws-waf-block-burst.yaml --from 'now-1h' --to 'now'
 runreveal detections test -f detections/sql/alb-server-error-burst.yaml --from 'now-1h' --to 'now'
 runreveal detections sync --dry-run -d detections
@@ -71,7 +77,7 @@ Before activation:
 1. Use a dedicated synthetic-data workspace. Workflow logs in a public repository are public, and a dry-run reveals detection names and definitions. Use a private deployment repository for sensitive rules or workspace details.
 2. Protect `main`, require validation and peer review, and configure two GitHub environments: `runreveal-lab-preview` and `runreveal-lab-apply`. Restrict both to `main`; require reviewers and prevent self-review for apply. An environment's name in YAML does **not** configure these controls by itself.
 3. Store a least-privilege token as the environment secret `RUNREVEAL_TOKEN` and the workspace ID as `RUNREVEAL_WORKSPACE`. Ensure both environments target the **same** dedicated workspace; apply checks its ID against the successful preview job's output before sync. The workspace ID is an identifier, not a credential, and is included in run metadata. Use a read-capable token for preview if your RunReveal permission model supports all dry-run operations; grant write scope only to apply. Confirm exact token permissions with your deployment's RBAC.
-4. Manually dispatch on `main`, initially with `apply=false`. The template validates the exact commit before the credentialed preview. Review create/update/delete scope, warnings and source routing.
+4. Manually dispatch on `main`, initially with `apply=false`. The template runs local tests on the exact commit, then API-backed Sigma/SQL lint and a credentialed preview. Review create/update/delete scope, warnings and source routing.
 5. A later `apply=true` dispatch revalidates and previews its exact commit, then waits on a separate apply-environment approval. The reviewer must read that run's preview and confirm the commit/workspace. The acknowledgement must be `SYNC-DEDICATED-LAB`. There are no PR secrets, `pull_request_target` triggers, automatic push deployments or overwrite flags.
 6. The sync still uploads **disabled** definitions. Enable rules and notification routing only after a separate reviewed configuration change, staging results, an owner and a rollback procedure. Do not weaken this demo's disabled-default contract just to get a deployment green.
 

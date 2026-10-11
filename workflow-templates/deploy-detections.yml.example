@@ -62,6 +62,8 @@ jobs:
           set -euo pipefail
           test -n "$RUNREVEAL_TOKEN"
           [[ "$RUNREVEAL_WORKSPACE" =~ ^[[:alnum:]_-]+$ ]]
+          .tools/runreveal lint sigma detections/sigma
+          .tools/runreveal lint sql detections/sql
           .tools/runreveal detections sync --dry-run -d detections
           printf 'workspace_id=%s\n' "$RUNREVEAL_WORKSPACE" >> "$GITHUB_OUTPUT"
 

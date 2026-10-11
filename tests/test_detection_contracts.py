@@ -89,17 +89,17 @@ class NativeOutputContracts(unittest.TestCase):
     def validate(self, code, output, expected, stderr=""):
         RUNNER.validate_native_result(code, output, stderr, TITLE, expected)
 
-    def test_matching_exit_one_is_success(self):
-        self.validate(1, f"line 1 matches detection {TITLE}\n", [True])
+    def test_matching_exit_zero_with_results_is_success(self):
+        self.validate(0, f"line 1 matches detection [{TITLE}]\n", [True])
 
     def test_nonmatching_exit_zero_is_success(self):
-        self.validate(0, f"line 1 does not match detection {TITLE}\n", [False])
+        self.validate(0, f"entry 1 does not match detection [{TITLE}]\n", [False])
 
     def test_mixed_lines_are_checked_individually(self):
-        self.validate(1, f"line 1 does not match detection {TITLE}\nline 2 matches detection {TITLE}\n", [False, True])
+        self.validate(0, f"entry 1 does not match detection [{TITLE}]\nline 2 matches detection [{TITLE}]\n", [False, True])
 
-    def test_documented_output_on_stderr_is_accepted(self):
-        self.validate(1, "", [True], f"line 1 matches detection {TITLE}")
+    def test_known_output_on_stderr_is_accepted(self):
+        self.validate(0, "", [True], f"line 1 matches detection [{TITLE}]")
 
     def test_error_exit_one_is_not_match_success(self):
         with self.assertRaises(ValueError):
@@ -111,39 +111,39 @@ class NativeOutputContracts(unittest.TestCase):
 
     def test_correct_exit_without_all_lines_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}", [True, False])
+            self.validate(0, f"line 1 matches detection [{TITLE}]", [True, False])
 
     def test_match_plus_error_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}", [True], "Error: malformed second event")
+            self.validate(0, f"line 1 matches detection [{TITLE}]", [True], "Error: malformed second event")
 
     def test_extra_unknown_output_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}\nSkipped malformed event", [True])
+            self.validate(0, f"line 1 matches detection [{TITLE}]\nSkipped malformed event", [True])
 
     def test_duplicate_line_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}\nline 1 matches detection {TITLE}", [True])
+            self.validate(0, f"line 1 matches detection [{TITLE}]\nline 1 matches detection [{TITLE}]", [True])
 
     def test_wrong_per_event_result_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}\nline 2 matches detection {TITLE}", [True, False])
+            self.validate(0, f"line 1 matches detection [{TITLE}]\nline 2 matches detection [{TITLE}]", [True, False])
 
     def test_unexpected_exit_two_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(2, f"line 1 matches detection {TITLE}", [True])
+            self.validate(2, f"line 1 matches detection [{TITLE}]", [True])
 
     def test_wrong_title_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, "line 1 matches detection Another Rule", [True])
+            self.validate(0, "line 1 matches detection [Another Rule]", [True])
 
     def test_extra_event_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 matches detection {TITLE}\nline 2 matches detection {TITLE}", [True])
+            self.validate(0, f"line 1 matches detection [{TITLE}]\nline 2 matches detection [{TITLE}]", [True])
 
     def test_negative_signal_exit_one_fails(self):
         with self.assertRaises(ValueError):
-            self.validate(1, f"line 1 does not match detection {TITLE}", [False])
+            self.validate(1, f"entry 1 does not match detection [{TITLE}]", [False])
 
 
 if __name__ == "__main__":

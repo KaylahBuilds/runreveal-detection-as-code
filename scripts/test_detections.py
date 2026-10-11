@@ -77,24 +77,26 @@ def simple_contract_match(rule: dict, event: dict) -> bool:
 
 
 def validate_native_result(returncode: int, stdout: str, stderr: str, title: str, expected: list[bool]) -> None:
-    """Expected match is rc=1, but an rc=1 engine error must never pass."""
-    expected_code = 1 if any(expected) else 0
-    if returncode != expected_code:
-        raise ValueError(f"Expected exit {expected_code}, received {returncode}")
-    line_pattern = re.compile(r"line ([1-9][0-9]*) (matches|does not match) detection " + re.escape(title))
+    """v2026.9.1 with --fail-no-match=false: rc=0 plus every per-event result."""
+    if returncode != 0:
+        raise ValueError(f"Expected exit 0 with --fail-no-match=false, received {returncode}")
+    line_pattern = re.compile(r"(line|entry) ([1-9][0-9]*) (matches|does not match) detection \[" + re.escape(title) + r"\]")
     observed = {}
-    # Curated CLI output is documented as one text result per input line. API commands
-    # use JSON instead. Fail closed if this contract changes; never guess success.
+    # Observed v2026.9.1: 'line N matches detection [Title]' or
+    # 'entry N does not match detection [Title]'. Fail closed on format changes.
     for line in (stdout + "\n" + stderr).splitlines():
         if not line.strip():
             continue
         match = line_pattern.fullmatch(line.strip())
         if not match:
             raise ValueError("Unexpected native output (possible engine error or CLI format change): " + line[:240])
-        number = int(match.group(1))
+        number = int(match.group(2))
+        matched = match.group(3) == "matches"
+        if match.group(1) != ("line" if matched else "entry"):
+            raise ValueError("Unexpected native event label")
         if number in observed:
             raise ValueError("Duplicate native event result")
-        observed[number] = match.group(2) == "matches"
+        observed[number] = matched
     wanted = dict(enumerate(expected, 1))
     if observed != wanted:
         raise ValueError(f"Per-event outcomes differ: expected {wanted}, received {observed}")
@@ -145,22 +147,18 @@ def native_check(cli: Path, cases: list[dict]) -> None:
         environment["XDG_CONFIG_HOME"] = config_dir
         # Avoid selecting a desktop user's previously authenticated keychain profile.
         environment["RUNREVEAL_PROFILE"] = Path(config_dir).name
-        # v2026.9.1 checks that token/workspace settings exist even for local commands.
+        # v2026.9.1 checks that token/workspace settings exist even for local run.
         # This sentinel is deliberately NOT a credential. It never goes to RunReveal:
         # bind the CLI API URL to an unusable loopback endpoint, so accidental API
         # dependencies fail closed instead of consulting a real profile or workspace.
         environment["RUNREVEAL_TOKEN"] = "offline-fixture-not-a-credential"
         environment["RUNREVEAL_WORKSPACE"] = "offline-validation"
         environment["RUNREVEAL_BASEURL"] = "http://127.0.0.1:1"
-        for kind in ("sigma", "sql"):
-            result = subprocess.run([str(cli), "lint", kind, f"detections/{kind}"], cwd=ROOT, env=environment,
-                                    capture_output=True, text=True, timeout=60, check=False)
-            if result.returncode != 0:
-                raise ValueError(f"Native {kind} lint failed: {(result.stdout + result.stderr)[:2000]}")
-            print(f"Native {kind} lint passed")
+        # Both current CLI lint commands call the API. Do not run or silently skip
+        # them here: they belong to the explicitly credentialed preview template.
         for case in cases:
             rule = yaml.safe_load(safe_file(case["detection_file"]).read_text(encoding="utf-8"))
-            result = subprocess.run([str(cli), "detections", "run", "-f", case["detection_file"], "-i", case["input_file"]],
+            result = subprocess.run([str(cli), "detections", "run", "--fail-no-match=false", "-f", case["detection_file"], "-i", case["input_file"]],
                                     cwd=ROOT, env=environment, capture_output=True, text=True, timeout=60, check=False)
             validate_native_result(result.returncode, result.stdout, result.stderr, rule["title"], case["expected_matches"])
             print(f"Native fixture passed: {case['name']}")

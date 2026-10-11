@@ -6,9 +6,8 @@ Use this as an acceptance checklist, not a declaration that an end-to-end produc
 
 - [ ] Terraform formatting and validation pass for both module and example.
 - [ ] Mocked provider tests cover resource defaults, policy scope, input rejection, and explicit WAF logging opt-in.
-- [ ] Detection files pass the pinned native CLI linter.
 - [ ] Synthetic Sigma positive, negative, and boundary cases produce the expected results in the native CLI.
-- [ ] The Python wrapper rejects process failures and unexpected output instead of treating every exit code `1` as a detection match.
+- [ ] The Python wrapper rejects process failures and unexpected output, checks every event result, and uses the pinned release's behavior rather than an older guide's exit-code convention.
 - [ ] Scheduled SQL examples remain disabled until tested against the actual workspace schemas and time windows.
 - [ ] No credentials, raw logs, local profiles, state, plans, or generated reports are in the proposed commit.
 
@@ -25,6 +24,7 @@ Use this as an acceptance checklist, not a declaration that an end-to-end produc
 
 ## 3. Detection semantics — requires RunReveal validation
 
+- [ ] Run both native Sigma and SQL linters using the protected staging environment. These commands call the API in v2026.9.1 and are not part of credential-free PR validation.
 - [ ] Verify field names and types against the actual normalized WAF and ALB tables.
 - [ ] Exercise the scheduled SQL queries over a bounded historical test interval; prove below-threshold, at-threshold, and above-threshold cases.
 - [ ] Account for delayed events, received time versus event time, quiet sources, maintenance traffic, and known false positives.
@@ -40,4 +40,4 @@ Use this as an acceptance checklist, not a declaration that an end-to-end produc
 - [ ] Apply only the reviewed bundle, confirm remote definitions and enabled/disabled state, then repeat the functional checks.
 - [ ] Rehearse rollback by reverting and reviewing a new sync diff. A Git revert alone does not undo a remote change.
 
-No AWS resources, RunReveal sources, workspace sync, live SQL replay, or notification delivery were performed when authoring this repository. Those checks require the operator's accounts and explicit deployment decisions.
+No AWS resources, RunReveal sources, authenticated linting, workspace sync, live SQL replay, or notification delivery were performed when authoring this repository. Those checks require the operator's accounts and explicit deployment decisions.

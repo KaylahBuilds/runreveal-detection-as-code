@@ -51,7 +51,9 @@ bash scripts/install-runreveal.sh .tools
 python scripts/test_detections.py --native .tools/runreveal
 ```
 
-Module tests use Terraform's mocked provider. They do not create resources or need AWS credentials. A mock test does not prove that AWS will accept a policy or deliver logs. Native Sigma fixture replay and SQL linting also do not prove live parser behavior or scheduled SQL results.
+Module tests use Terraform's mocked provider. They do not create resources or need AWS credentials. A mock test does not prove that AWS will accept a policy or deliver logs. Native Sigma fixture replay does not prove live parser behavior or scheduled SQL results.
+
+RunReveal v2026.9.1 requires a token setting even for its local fixture command. The runner supplies a deliberately invalid, nonsecret sentinel only to that child process and points its API URL to unreachable loopback port 1. No real token is used, and an API request cannot reach RunReveal. **Both Sigma and SQL lint commands are API-backed in this release**; they belong in the inactive credentialed preview workflow, not public PR validation. Do not mistake the local contract checks for those linters.
 
 ## Before a real integration
 

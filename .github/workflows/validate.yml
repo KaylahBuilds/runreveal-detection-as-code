@@ -57,7 +57,5 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Install checksum-pinned RunReveal CLI
         run: bash scripts/install-runreveal.sh .tools
-      - name: Temporary local-only CLI compatibility diagnostics
-        run: bash scripts/probe-cli.sh .tools/runreveal
-      - name: Native synthetic detection tests (no API credentials)
+      - name: Native Sigma synthetic tests (API endpoint disabled)
         run: python scripts/test_detections.py --native .tools/runreveal
