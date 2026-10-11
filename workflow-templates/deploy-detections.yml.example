@@ -1,0 +1,96 @@
+# INACTIVE: deliberate template, not a GitHub Actions workflow.
+# Before copying into .github/workflows, read docs/detection-cicd.md completely.
+# Use a dedicated disposable RunReveal workspace containing ONLY this demo's detections.
+name: Reviewed RunReveal lab sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply after a separate environment reviewer approves the preview
+        type: boolean
+        default: false
+      confirmation:
+        description: Type SYNC-DEDICATED-LAB only after checking the workspace and deletion plan
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runreveal-dedicated-lab-sync
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s tests -v
+      - run: bash scripts/install-runreveal.sh .tools
+      - run: python scripts/test_detections.py --native .tools/runreveal
+
+  preview:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: runreveal-lab-preview
+    outputs:
+      workspace_id: ${{ steps.preview.outputs.workspace_id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - run: bash scripts/install-runreveal.sh .tools
+      - name: Preview all CLI-managed detections in the dedicated lab workspace
+        id: preview
+        env:
+          RUNREVEAL_TOKEN: ${{ secrets.RUNREVEAL_TOKEN }}
+          RUNREVEAL_WORKSPACE: ${{ vars.RUNREVEAL_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          test -n "$RUNREVEAL_TOKEN"
+          [[ "$RUNREVEAL_WORKSPACE" =~ ^[[:alnum:]_-]+$ ]]
+          .tools/runreveal detections sync --dry-run -d detections
+          printf 'workspace_id=%s\n' "$RUNREVEAL_WORKSPACE" >> "$GITHUB_OUTPUT"
+
+  apply:
+    needs: preview
+    if: inputs.apply && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Configure required reviewers, prevent self-review, and permit main only.
+    # This approval happens AFTER preview; the reviewer must inspect that job's plan.
+    environment: runreveal-lab-apply
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require an explicit scope acknowledgement
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'SYNC-DEDICATED-LAB'
+      - run: bash scripts/install-runreveal.sh .tools
+      - name: Sync the reviewed commit into the dedicated lab workspace
+        env:
+          RUNREVEAL_TOKEN: ${{ secrets.RUNREVEAL_TOKEN }}
+          RUNREVEAL_WORKSPACE: ${{ vars.RUNREVEAL_WORKSPACE }}
+          PREVIEW_WORKSPACE: ${{ needs.preview.outputs.workspace_id }}
+        run: |
+          set -euo pipefail
+          test -n "$RUNREVEAL_TOKEN"
+          test -n "$RUNREVEAL_WORKSPACE"
+          test "$RUNREVEAL_WORKSPACE" = "$PREVIEW_WORKSPACE"
+          .tools/runreveal detections sync -d detections

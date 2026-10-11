@@ -102,40 +102,40 @@ resource "aws_s3_bucket_policy" "logs" {
         Resource  = [local.bucket_arns[each.key], "${local.bucket_arns[each.key]}/*"]
         Condition = { Bool = { "aws:SecureTransport" = "false", "aws:PrincipalIsAWSService" = "false" } }
       }
-      ], each.key == "waf" ? [
-      {
-        Sid       = "AWSLogDeliveryWrite"
-        Effect    = "Allow"
-        Principal = { Service = "delivery.logs.amazonaws.com" }
-        Action    = "s3:PutObject"
-        Resource  = "${local.bucket_arns.waf}/AWSLogs/${local.account_id}/*"
-        Condition = {
-          StringEquals = { "aws:SourceAccount" = local.account_id, "s3:x-amz-acl" = "bucket-owner-full-control" }
-          ArnLike      = { "aws:SourceArn" = local.delivery_source }
+      ], jsondecode(each.key == "waf" ? jsonencode([
+        {
+          Sid       = "AWSLogDeliveryWrite"
+          Effect    = "Allow"
+          Principal = { Service = "delivery.logs.amazonaws.com" }
+          Action    = "s3:PutObject"
+          Resource  = "${local.bucket_arns.waf}/AWSLogs/${local.account_id}/*"
+          Condition = {
+            StringEquals = { "aws:SourceAccount" = local.account_id, "s3:x-amz-acl" = "bucket-owner-full-control" }
+            ArnLike      = { "aws:SourceArn" = local.delivery_source }
+          }
+        },
+        {
+          Sid       = "AWSLogDeliveryAclCheck"
+          Effect    = "Allow"
+          Principal = { Service = "delivery.logs.amazonaws.com" }
+          Action    = ["s3:GetBucketAcl", "s3:ListBucket"]
+          Resource  = local.bucket_arns.waf
+          Condition = {
+            StringEquals = { "aws:SourceAccount" = local.account_id }
+            ArnLike      = { "aws:SourceArn" = local.delivery_source }
+          }
         }
-      },
-      {
-        Sid       = "AWSLogDeliveryAclCheck"
-        Effect    = "Allow"
-        Principal = { Service = "delivery.logs.amazonaws.com" }
-        Action    = ["s3:GetBucketAcl", "s3:ListBucket"]
-        Resource  = local.bucket_arns.waf
-        Condition = {
-          StringEquals = { "aws:SourceAccount" = local.account_id }
-          ArnLike      = { "aws:SourceArn" = local.delivery_source }
+        ]) : jsonencode([
+        {
+          Sid       = "ALBLogDeliveryWrite"
+          Effect    = "Allow"
+          Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
+          Action    = "s3:PutObject"
+          # Includes ELBAccessLogTestFile; notification filtering excludes that test file.
+          Resource  = "${local.bucket_arns.alb}/${local.alb_prefix}AWSLogs/${local.account_id}/*"
+          Condition = { ArnEquals = { "aws:SourceArn" = var.alb_arn } }
         }
-      }
-      ] : [
-      {
-        Sid       = "ALBLogDeliveryWrite"
-        Effect    = "Allow"
-        Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
-        Action    = "s3:PutObject"
-        # Includes ELBAccessLogTestFile; notification filtering excludes that test file.
-        Resource  = "${local.bucket_arns.alb}/${local.alb_prefix}AWSLogs/${local.account_id}/*"
-        Condition = { ArnEquals = { "aws:SourceArn" = var.alb_arn } }
-      }
-    ])
+    ])))
   })
   depends_on = [aws_s3_bucket_public_access_block.logs, aws_s3_bucket_ownership_controls.logs]
 }
