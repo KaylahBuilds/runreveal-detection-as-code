@@ -1,0 +1,61 @@
+name: Validate examples
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - name: Initialize module without a backend
+        run: terraform -chdir=modules/runreveal-aws-logs init -backend=false
+      - name: Validate module and test with mocked AWS
+        run: |
+          terraform -chdir=modules/runreveal-aws-logs validate
+          terraform -chdir=modules/runreveal-aws-logs test
+      - name: Validate example without planning or deploying
+        run: |
+          terraform -chdir=examples/aws-waf-alb init -backend=false
+          terraform -chdir=examples/aws-waf-alb validate
+
+  detections:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Offline test-runner contracts
+        run: python -m unittest discover -s tests -v
+      - name: Install checksum-pinned RunReveal CLI
+        run: bash scripts/install-runreveal.sh .tools
+      - name: Native synthetic detection tests (no API credentials)
+        run: python scripts/test_detections.py --native .tools/runreveal

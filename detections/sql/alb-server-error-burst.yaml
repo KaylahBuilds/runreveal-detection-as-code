@@ -1,0 +1,18 @@
+name: alb-server-error-burst
+displayName: ALB Server Error Burst
+type: sql
+file: alb-server-error-burst.sql
+description: Ten or more ALB HTTP 5xx responses per source and host in one five-minute received window.
+sourceTypes:
+  - alb
+categories:
+  - aws
+  - availability
+schedule: '*/5 * * * *'
+severity: medium
+disabled: true
+autoTriage: false
+notificationNames: []
+notes: >-
+  Availability and investigation signal, not proof of an attack. Baseline traffic and distinguish
+  load-balancer failures from target failures during triage; this query does not make that distinction.

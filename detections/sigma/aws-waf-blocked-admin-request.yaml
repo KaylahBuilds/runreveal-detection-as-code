@@ -1,0 +1,31 @@
+title: AWS WAF Blocked Admin Request
+id: 814ec5b1-c729-44b5-a472-2542689e42ba
+status: experimental
+description: A blocked request to a selected administrative path; a triage signal, not proof of compromise.
+author: KaylahBuilds
+date: 2026-10-10
+logsource:
+  product: aws
+  service: aws-waf
+sourcetypes:
+  - aws-waf
+detection:
+  selection:
+    action: BLOCK
+    httpRequest.uri:
+      - /admin/login
+      - /wp-login.php
+  condition: selection
+fields:
+  - httpRequest.clientIp
+  - httpRequest.uri
+  - terminatingRuleId
+falsepositives:
+  - Approved security testing and legitimate users blocked by an overly strict rule.
+level: low
+disabled: true
+autoTriage: false
+notificationNames: []
+notes: >-
+  Evaluate raw WAF event fields. Exact paths are illustrative, not exhaustive.
+  Validate real source routing and event shape in a disposable workspace before enabling.

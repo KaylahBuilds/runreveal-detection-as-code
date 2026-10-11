@@ -1,0 +1,18 @@
+name: aws-waf-block-burst
+displayName: AWS WAF Block Burst
+type: sql
+file: aws-waf-block-burst.sql
+description: Twenty or more blocked requests from one source IP and web ACL in one five-minute received window.
+sourceTypes:
+  - aws-waf
+categories:
+  - aws
+  - edge-security
+schedule: '*/5 * * * *'
+severity: medium
+disabled: true
+autoTriage: false
+notificationNames: []
+notes: >-
+  Threshold is illustrative. NAT, shared proxies, scanners and rule changes can produce benign bursts.
+  Confirm field availability and expected results against workspace data before enabling.

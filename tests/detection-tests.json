@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "blocked-admin-positive",
+      "detection_file": "detections/sigma/aws-waf-blocked-admin-request.yaml",
+      "input_file": "fixtures/waf-positive.ndjson",
+      "expected_matches": [true, true]
+    },
+    {
+      "name": "allowed-and-unrelated-negative",
+      "detection_file": "detections/sigma/aws-waf-blocked-admin-request.yaml",
+      "input_file": "fixtures/waf-negative.ndjson",
+      "expected_matches": [false, false, false, false]
+    },
+    {
+      "name": "missing-and-null-fields",
+      "detection_file": "detections/sigma/aws-waf-blocked-admin-request.yaml",
+      "input_file": "fixtures/waf-edge.ndjson",
+      "expected_matches": [false, false, false]
+    },
+    {
+      "name": "mixed-event-outcomes",
+      "detection_file": "detections/sigma/aws-waf-blocked-admin-request.yaml",
+      "input_file": "fixtures/waf-mixed.ndjson",
+      "expected_matches": [false, true, false]
+    }
+  ]
+}

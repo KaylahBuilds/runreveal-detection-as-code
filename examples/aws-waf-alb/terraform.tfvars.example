@@ -1,0 +1,14 @@
+# Illustrative values only. Replace in an ignored local tfvars file.
+aws_region             = "us-east-1"
+aws_account_id         = "123456789012"
+name                   = "runreveal-edge"
+waf_bucket_name        = "aws-waf-logs-replace-with-unique-name"
+alb_bucket_name        = "replace-with-unique-alb-log-bucket"
+alb_arn                = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/example/0123456789abcdef"
+# REPLACE with the exact principal confirmed for YOUR RunReveal deployment.
+# The placeholder is deliberately not RunReveal's real SaaS account.
+runreveal_principal_arn = "arn:aws:iam::111122223333:root"
+manage_waf_logging     = false
+log_retention_days     = 90
+# Set external_ids using TF_VAR_external_ids from a protected local environment.
+# Never commit real identifiers, credentials, state, plans or customer logs.

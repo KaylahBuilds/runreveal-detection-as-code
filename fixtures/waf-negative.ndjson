@@ -1,0 +1,4 @@
+{"action":"ALLOW","httpRequest":{"clientIp":"192.0.2.11","uri":"/admin/login","requestId":"synthetic-allow"}}
+{"action":"BLOCK","httpRequest":{"clientIp":"192.0.2.12","uri":"/products","requestId":"synthetic-other-path"}}
+{"action":"COUNT","httpRequest":{"clientIp":"192.0.2.13","uri":"/wp-login.php","requestId":"synthetic-count"}}
+{"action":"BLOCK","httpRequest":{"clientIp":"192.0.2.14","uri":"/admin/login-help","requestId":"synthetic-boundary"}}

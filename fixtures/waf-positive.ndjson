@@ -1,0 +1,2 @@
+{"timestamp":1791633600000,"formatVersion":1,"action":"BLOCK","terminatingRuleId":"demo-admin-guard","httpRequest":{"clientIp":"192.0.2.10","country":"US","uri":"/admin/login","args":"","httpMethod":"GET","requestId":"synthetic-positive-1"}}
+{"timestamp":1791633601000,"formatVersion":1,"action":"BLOCK","terminatingRuleId":"demo-admin-guard","httpRequest":{"clientIp":"198.51.100.20","country":"US","uri":"/wp-login.php","args":"","httpMethod":"GET","requestId":"synthetic-positive-2"}}

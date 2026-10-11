@@ -1,0 +1,3 @@
+{"action":"ALLOW","httpRequest":{"uri":"/admin/login","requestId":"synthetic-mixed-1"}}
+{"action":"BLOCK","httpRequest":{"uri":"/admin/login","requestId":"synthetic-mixed-2"}}
+{"action":"BLOCK","httpRequest":{"uri":"/products","requestId":"synthetic-mixed-3"}}
